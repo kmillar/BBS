@@ -1,0 +1,434 @@
+# This file contains a function createPropagationList() which
+# will produce a file containing entries like
+
+# BiocGenerics#source#propagate: YES
+# RGalaxy#source#propagate: YES
+# mypkg#source#propagate: version 99.99.99 of dependency Foo is not available; found version 0.13.4 for type source
+
+# There is a companion file test_createPropagationDB.R containing
+# unit tests.
+
+
+if (!require(BiocInstaller))
+{
+    source("http://bioconductor.org/biocLite.R")
+}
+library(tools)
+
+## GLOBAL VARIABLES
+
+t <- tempdir()
+rvers <- paste(BiocInstaller:::R_VERSION$major,
+    BiocInstaller:::R_VERSION$minor,
+    sep=".")
+biocvers <- BiocInstaller::biocVersion()
+
+
+# Takes as input the value of an Imports, Depends, 
+# or LinkingTo field and returns a named character
+# vector of Bioconductor dependencies, where the names
+# are version specifiers or blank.
+cleanupDependency <- function(input)
+{
+    if (is.null(input)) return(character(0))
+    output <- gsub("\\s", "", input)
+    raw_nms <- output
+    nms <- strsplit(raw_nms, ",")[[1]]
+    namevec <- vector(mode = "character", length(nms))
+    output <- gsub("\\([^)]*\\)", "", output)
+    res <- strsplit(output, ",")[[1]]
+    for (i in 1:length(nms))
+    {
+        if(grepl(">=", nms[i], fixed=TRUE))
+        {
+            tmp <- gsub(".*>=", "", nms[i])
+            tmp <- gsub(")", "", tmp, fixed=TRUE)
+            namevec[i] <- tmp
+        } else {
+            namevec[i] = ''
+        }
+    }
+    names(res) <- namevec
+    res <- res[which(res != "R")]
+    res
+}
+
+# Helper function for tiebreaker()
+best <- function(a, b)
+{
+    try({pa <- package_version(a)}, silent=TRUE)
+    try({pb <- package_version(b)}, silent=TRUE)
+    if (!exists("pa") && !exists("pb")) return("")
+    if (exists('pa') && !exists("pb")) return(a)
+    if (!exists("pa") && exists("pb")) return(b)
+    as.character(max(pa, pb))
+}
+
+# Given two package version specifiers, which is 
+# for a more recent version.
+tiebreaker <- function(vec)
+{
+    hsh <- new.env(parent = emptyenv())
+    for (i in 1:length(vec))
+    {
+        nm <- names(vec)[i]
+        vl <- vec[i]
+        if (vl %in% ls(hsh))
+        {
+            hv <- get(vl, envir=hsh)
+            assign(vl, best(hv, nm), envir=hsh)
+        } else {
+            assign(vl, nm, envir=hsh)
+        }
+    }
+    tmp <- unlist(as.list(hsh))
+    vec <- names(tmp)
+    names(vec) <- tmp
+    vec
+}
+
+# Get the Depends/Imports/LinkingTo (Bioconductor) dependencies
+# for a given package.
+getdeps <- function(pkg, src)
+{
+    fields <- c("Depends", "Imports", "LinkingTo")
+    if (missing(src))
+    {
+        x <- subset(fullrepo.df, Package == pkg)
+        names <- colnames(x)
+        if (dim(x)[1] == 0)
+            x <- subset(bioc.apdf, Package==pkg)
+    } else {
+        x <- src
+        names <- names(x)
+    }
+    res <- c()
+    for (field in fields)
+    {
+        if(field %in% names &&  length(x[field]))#!is.na(x[field]))
+            res <- c(res, cleanupDependency(unname(x[field])[[1]]))
+    }
+    if(length(res))
+        res <- tiebreaker(res)
+    res <- res[res %in% getBiocPkgs()]
+    if (!length(res))
+        return(NULL)
+    res
+}
+
+# Get the list of Bioconductor packages
+getBiocPkgs <- function()
+{
+    p <- subset(fullrepo.df, select="Package")
+    v <- as.vector(p)[[1]]
+    unique(c(v, bioc.ap))
+}
+
+
+# Determine whether a given package can be propagated.
+makeDecision <- function(pkg)
+{
+    if (!pkg %in% dir.pkgs)
+    {
+        assign(pkg, "RemoveMe", envir=e)
+        return()
+    }
+    tf <- file.path(tempdir(), "mytempfile")
+    if (pkg %in% ls(e))
+        return() # don't need to do anything
+    deps <- getdeps(pkg)
+    if (is.null(deps))
+    {
+        assign(pkg, TRUE, envir=e)
+        ap <<- addPkgToPartialRepos(pkg, deps, type)
+        cat(pkg, "\n", file=tf, append=TRUE)
+    } else {
+        repos <- c(partialrepo.url, biocrepo.url)
+        ap <- available.packages(contrib.url(repos, type), type=type)
+        for (i in 1:length(deps))
+        {
+            vreq <- names(deps)[i]
+            dep <- deps[i]
+            # browser()
+            row <- ap[dep,]
+            if(!length(row))
+            {
+                assign(pkg, paste("dependency", dep, "not available for type",
+                    type), envir=e)
+                return()
+            }
+            if(exists("ver"))
+                rm(ver)
+            try({ver <- package_version(vreq)}, silent=TRUE)
+            if (!exists("ver"))
+                ver <- package_version("0.0.0")
+            available.version <- package_version(row['Version'])
+            if (available.version >= ver)
+            {
+                # good.
+            } else {
+                assign(pkg, paste("version", vreq, "of dependency", dep,
+                    "is not available; found version", available.version,
+                    "for type", type), envir=e)
+                return()
+            }
+        }
+    }
+    # if we made it here we must be good. 
+    # so now we should be able to add 'pkg' to partialrepos
+    ap <<- addPkgToPartialRepos(pkg, deps, type)
+
+
+    # this should go away or get modified:
+    cat(pkg, "\n", file=tf, append=TRUE)
+    assign(pkg, TRUE, envir=e)
+}
+
+# Just governs whether pkg should be added to the list of 
+# packages we are processing that are somehow different
+# (newer or changed) than what is already online.
+# This is NOT where the final decision is made 
+# about whether a package should be propagated;
+# that's in makeDecision().
+shouldPackageBeAdded <- function(pkg)
+{
+    # compare pkg entry in fullrepos and biocrepos
+    # if pkg is not in biocrepos, return TRUE
+    # if fullrepos version is higher, return TRUE, otherwise FALSE
+    if (!pkg %in% rownames(bioc.apdb))
+        return(TRUE)
+    pkgInfoInBioc <- bioc.apdb[pkg,]
+    pkgInfoInFullrepo <- fullrepo.apdb[fullrepo.apdb[,"Package"] == pkg,]
+    # biocDeps <- getdeps(pkg, pkgInfoInBioc)
+    # if (!is.null(biocDeps))
+    #     biocDeps <- sort(biocDeps)
+    # fullrepoDeps <- getdeps(pkg, pkgInfoInFullrepo)
+    # if (!is.null(fullrepoDeps))
+    #     fullrepoDeps <- sort(fullrepoDeps)
+    versionInBioc <- package_version(pkgInfoInBioc['Version'])
+    versionInFullrepo <- package_version(pkgInfoInFullrepo['Version'])
+    if (versionInFullrepo > versionInBioc)
+        return(TRUE)
+    FALSE    
+    # we could check somewhere if the version has been
+    # *decremented*, but we're not doing that yet.
+    # if (length(biocDeps) == length(fullrepoDeps) && 
+    #   all(biocDeps == fullrepoDeps)
+    #   && all(names(biocDeps) == names(fullrepoDeps)))
+    # {
+    #     return(FALSE)
+    # }
+    # TRUE
+}
+
+
+# If we have determined that 'pkg' can be propagated, then we
+# add it to a partial repository we are building. Our main
+# algorithm checks each package against the union of what is
+# onine already (available via biocLite()) and what is
+# in this partial repository.
+addPkgToPartialRepos <- function(pkg, deps, type)
+{
+    if(shouldPackageBeAdded(pkg))
+    {
+        # print(paste("adding to partial repos:", pkg))
+        src.url <- paste0("file://", 
+            file.path(t, "fullrepo"))
+        src.db <- available.packages(contrib.url(src.url, type), type)
+        stuffToCopy <- src.db[pkg,]
+        stuffToCopy['Repository'] <- sub("fullrepo", "partialrepo",
+            stuffToCopy['Repository'])
+        dest.url <- paste0("file://",
+            file.path(t, "partialrepo"))
+        dest.db <- available.packages(contrib.url(dest.url, type), type)
+        if (!pkg %in% dest.db[, "Package"])
+        # if (!pkg %in% rownames(dest.db))
+        {
+            print(paste("adding to partial repos:", pkg))
+            dest.db <- rbind(dest.db, stuffToCopy)
+            dest <- file.path(t, "partialrepo", contribpath)
+            write.dcf(dest.db, file.path(dest, "PACKAGES"))
+            if(file.exists(file.path(dest, "PACKAGES.gz")))
+                file.remove(file.path(dest, "PACKAGES.gz"))
+        }
+        dest.db
+    } else {
+        # print(paste("not adding", pkg))
+    }
+}
+
+# Create PACKAGES file for temporary repos
+makePackagesFile <- function(outgoingDir, type, contribpath)
+{
+    t <- tempdir()
+    fullrepo <- file.path(t, "fullrepo")
+    dest <- file.path(fullrepo, contribpath)
+    if (file.exists(dest))
+        unlink(dest, recursive=TRUE)
+    dir.create(dest, recursive=TRUE)
+    # FIXME - remove the IF here:
+    # if (!file.exists(file.path(outgoingDir, "PACKAGES"))) # hack
+    # {
+        message("Running write_PACKAGES()...")
+        t2 <- type
+        if (type == "mac.binary.mavericks")
+            t2 <- "mac.binary"
+        write_PACKAGES(outgoingDir, type=t2)
+    # }
+    file.copy(file.path(outgoingDir, "PACKAGES"),
+        dest, overwrite=TRUE)
+    # unlink(file.path(outgoingDir, c("PACKAGES", "PACKAGES.gz")))
+    unlink(file.path(outgoingDir, "PACKAGES.gz"))
+    read.dcf(file.path(dest, "PACKAGES"))
+}
+
+
+# The recursive function that is called to determine
+# the order of packages to process. We start with packages
+# that have no (Bioconductor) dependencies and then proceed to
+# packages that have only the packages we've already processed
+# as dependencies, and so on.
+recur <- function(pkg)
+{
+    deps <- getdeps(pkg)
+    if (is.null(deps))
+    {
+        makeDecision(pkg)
+    } else {
+        for (dep in deps)
+        {   
+            if (!dep %in% ls(e))
+            {
+                recur(dep)
+            }
+        }
+        if (all(deps %in% ls(e)))
+        {
+            makeDecision(pkg)
+        }
+    }
+}
+
+
+# The main entry point to this file. 
+# outgoingDirPath is a directory that normally contains under it
+# source, win.binary, mac.binary, and mac.binary.mavericks directories.
+# biocrepo should be either "bioc" (for software packages) or
+# "data/experiment" for experiment data packages.
+createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
+    biocrepo=c("bioc", "data/experiment"))
+{
+    if(missing(biocrepo))
+        stop("Must specify biocrepo!")
+    if (biocrepo == "bioc")
+    {
+        repo.name <- "BioCsoft"
+    } else {
+        repo.name <- "BioCexp"
+    }
+    bioc.apdb <<- available.packages(
+    contrib.url(biocinstallRepos()[repo.name]), type="source")
+    bioc.apdf <<- as.data.frame(bioc.apdb, stringsAsFactors=FALSE)
+    bioc.ap <<- rownames(bioc.apdb)
+
+    # vv Not robust to new package types! vv
+    pkgDirs <- c("source", "win.binary", "mac.binary", 
+        "mac.binary.mavericks") 
+    if (biocrepo=="data/experiment")    
+        pkgDirs <- "source"
+    descFields <- c("Package", "Version", "Depends", "Imports", "LinkingTo", 
+        "License", "MD5sum", "NeedsCompilation")
+    outgoingDirs <- file.path(outgoingDirPath, pkgDirs)
+
+    # remove me later:
+    tf <- file.path(tempdir(), "mytempfile")
+    if(file.exists(tf))
+        file.remove(tf)
+
+
+    t <- tempdir()
+    partialrepo <<- file.path(t, "partialrepo")
+    partialrepo.url <<- paste0("file://", partialrepo)
+    contribdirs <- sprintf(c("src/contrib", 
+        "bin/windows/contrib/%s", "bin/macosx/contrib/%s", 
+        "bin/macosx/mavericks/contrib/%s"), rvers)
+    contribs <- file.path(partialrepo, contribdirs)
+    pkgtypes <- c("source", "win.binary", "mac.binary",
+        "mac.binary.mavericks")
+    names(contribs) <- outgoingDirs
+    if (file.exists(partialrepo))
+        unlink(partialrepo, recursive=TRUE)    
+    dir.create(partialrepo, recursive=TRUE)
+    for (contrib in contribs)
+        dir.create(contrib, recursive=TRUE)
+    overall <<- new.env(parent=emptyenv())
+
+    for (i in 1:length(outgoingDirs))
+    {
+        outgoingDir <<- outgoingDirs[i]
+        if (!file.exists(outgoingDir))
+        {
+            message(paste(outgoingDir, "does not exist, skipping..."))
+            next
+        }
+
+
+
+        contribpath <<- contribdirs[i]
+        type <<- pkgtypes[i]
+        
+        fullrepo.apdb <<- makePackagesFile(outgoingDir, type, contribpath)
+        fullrepo.df <<- as.data.frame(fullrepo.apdb, stringsAsFactors=FALSE)
+        online.contrib <- file.path(t, "biocrepo",
+            contribpath)
+        if(file.exists(online.contrib))
+            unlink(online.contrib, recursive=TRUE)
+        dir.create(online.contrib, recursive=TRUE)
+        pkgIndex <- file.path(online.contrib, "PACKAGES")
+        if(file.exists(pkgIndex))
+            unlink(pkgIndex)
+        download.file(paste0("http://bioconductor.org/packages/",
+            biocvers, "/", biocrepo, "/src/contrib/PACKAGES"),
+        destfile=pkgIndex)
+        biocrepo.url <<- paste0("file://", file.path(t, "biocrepo"))
+        files <- dir(outgoingDir,
+            pattern="\\.tar\\.gz$|\\.tgz$|\\.zip$")
+        dir.pkgs <<- unlist(lapply(files,
+            function(x)strsplit(x, "_", fixed=TRUE)[[1]][1]))
+        e <<- new.env(parent=emptyenv())
+        contrib <- contribs[outgoingDir]
+        pkgsfile <- file.path(contrib, "PACKAGES")
+        if (file.exists(pkgsfile))
+            file.remove(pkgsfile)
+        file.create(pkgsfile)
+        for (pkg in dir.pkgs) recur(pkg)
+        assign(type, e, envir=overall)
+    }
+    nms <- c()
+    o <- as.list(overall)
+    for (i in names(o)) 
+    {
+        o[[i]] <- as.list(o[[i]])
+        nms <- append(nms, names(o[[i]]))
+    }
+    out <- file(propagationDbFilePath, "w")
+    nms <- sort(unique(nms))
+    for (pkg in nms)
+    {
+        for(type in names(o))
+        {
+            status <- o[[type]][[pkg]]
+            if(!length(status)) next
+
+            if (status == "RemoveMe")
+            {
+                next
+            } else if (status == TRUE) {
+                status <- "YES"
+            }
+            str <- sprintf("%s#%s#propagate: %s", pkg, type, status)
+            cat(str, file=out, sep="\n")
+        }
+    }
+    close(out)
+}
