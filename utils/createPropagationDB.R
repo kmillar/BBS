@@ -432,3 +432,49 @@ createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
     }
     close(out)
 }
+
+
+## This function is called by the updateReposPkgs-*.sh scripts,
+## running as biocadmin. Instead of just a straight cp --no-clobber --verbose,
+## we consult the propagation DB to determine what can be copied,
+## and then copy it (without overwriting existing files.) As before, we
+## display what has been copied, but we also display what has
+## NOT propagated.
+copyPropagatableFiles <- function(srcDir, fileExt, propagationDb, destDir=".")
+{
+    db <- read.dcf(propagationDb)
+    segs <- strsplit(srcDir, "/")[[1]]
+    srcType <- segs[length(segs)]
+    srcFiles <- dir(srcDir, pattern=glob2rx(paste0("*.", fileExt)))
+    res <- unlist(lapply(srcFiles, function(x){
+        pkg <- strsplit(x, "_")[[1]][1]
+        key <- sprintf("%s#%s#propagate", pkg, srcType)
+        if (key %in% colnames(db) && db[, key] == "YES")
+            TRUE
+        else
+            FALSE
+    }))
+    propagatable <- srcFiles[res]
+    notPropagatable <- srcFiles[!res]
+
+    for (file in notPropagatable)
+    {
+        cat(sprintf("File %s CANNOT be propagated!\n", file))
+    }
+
+    cat("\n")
+
+
+    for (file in propagatable)
+    {
+        # simulate cp --verbose output
+        if(!file.exists(file.path(destDir, file)))
+            cat("‘%s‘ -> ‘%s‘\n", file.path(srcDir, file),
+                file.path(destDir, file))
+    }
+
+
+    result <- file.copy(file.path(srcDir, propagatable), destDir,
+        overwrite=FALSE)
+    # Currently ignoring the result of the copy operation.
+}
