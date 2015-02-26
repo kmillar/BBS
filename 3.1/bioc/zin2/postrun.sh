@@ -19,6 +19,11 @@ $BBS_HOME/BBS-make-OUTGOING.py
 # Generate STATUS_DB.txt file
 $BBS_HOME/BBS-make-STATUS_DB.py
 
+# Generate PROPAGATE_STATUS_DB.txt
+OUTGOING_DIR=$BBS_CENTRAL_RDIR/OUTGOING
+PROPAGATE_STATUS_DB=$BBS_CENTRAL_RDIR/PROPAGATE_STATUS_DB.txt
+$BBS_R_CMD -e "source('$BBS_HOME/utils/createPropagationDB.R');createPropagationList('$OUTGOING_DIR', '$PROPAGATE_STATUS_DB', 'bioc')"
+
 # Generate and publish HTML report
 $BBS_HOME/BBS-report.py
 REPORT_DIRNAME=`/usr/bin/dirname $BBS_REPORT_PATH`
