@@ -469,12 +469,13 @@ copyPropagatableFiles <- function(srcDir, fileExt, propagationDb, destDir=".")
     {
         # simulate cp --verbose output
         if(!file.exists(file.path(destDir, file)))
-            cat("‘%s‘ -> ‘%s‘\n", file.path(srcDir, file),
-                file.path(destDir, file))
+            cat(sprintf("‘%s‘ -> ‘%s‘\n", file.path(srcDir, file),
+                file.path(destDir, file)))
     }
 
 
     result <- file.copy(file.path(srcDir, propagatable), destDir,
         overwrite=FALSE)
+    invisible(NULL)
     # Currently ignoring the result of the copy operation.
 }

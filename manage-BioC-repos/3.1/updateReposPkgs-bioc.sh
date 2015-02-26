@@ -4,9 +4,11 @@ cd "$HOME/manage-BioC-repos/3.1"
 
 . ./config.sh
 
+echo WHOA
+
 BBS_OUTGOING_DIR="/home/biocbuild/public_html/BBS/$BIOC_VERSION/bioc/OUTGOING"
 R_SCRIPT="source('/home/biocbuild/BBS/utils/list.old.pkgs.R')"
-PROPAGATION_R_SCRIPT="/home/biocbuild/BBS/utils/createPropagationDB.R"
+PROPAGATION_R_SCRIPT="source('/home/biocbuild/BBS/utils/createPropagationDB.R')"
 PROPAGATION_DB_FILE="$BBS_OUTGOING_DIR/../PROPAGATE_STATUS_DB.txt"
 
 REPOS_ROOT="$HOME/PACKAGES/$BIOC_VERSION/bioc"
@@ -21,8 +23,11 @@ update_repo()
 	fileext="$3"
 	cd "$working_dir"
 	if [ "$?" != "0" ]; then
+    echo d0
 		exit 1
+    echo d1
 	fi
+  echo d2
   echo "$PROPAGATION_R_SCRIPT; copyPropagatableFiles('$outgoing_subdir', '$fileext', '$PROPAGATION_DB_FILE') " | $R --slave
 	#cp --no-clobber --verbose "$outgoing_subdir"/*.$fileext .
 	echo "$R_SCRIPT; oldpkgs <- list.old.pkgs(suffix='.$fileext'); removed <- file.remove(oldpkgs); names(removed) <- oldpkgs; removed" | $R --slave
