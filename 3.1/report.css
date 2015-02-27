@@ -265,6 +265,19 @@ TABLE.mainrep .even .zin2 {
     background: #8AB;
 }
 
+/* dockernode */
+DIV.dockernode,
+TR.dockernode TD,
+TABLE.mainrep .dockernode,
+TABLE.mainrep .odd .dockernode {
+    background: #ACD;
+}
+TABLE.mainrep .even .dockernode {
+    background: #8AB;
+}
+
+
+
 /* wilson2 */
 DIV.wilson2,
 TR.wilson2 TD,

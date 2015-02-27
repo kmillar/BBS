@@ -33,7 +33,11 @@ cd ..
 . ./config.sh
 cd "$wd0"
 
-
+# these are for docker dev use only:
+export BBS_CENTRAL_RHOST="dockernode"
+export BBS_MEAT0_HOST="dockernode"
+export BBS_CENTRAL_BASEURL="http://$BBS_CENTRAL_RHOST/BBS/$BBS_BIOC_VERSION/$BBS_MODE"
+####
 
 # Needed only on the node performing stage6 (must be run on the
 # BBS_CENTRAL_RHOST machine).
@@ -48,7 +52,7 @@ cd "$wd0"
 # packages to propagate and to later not be replaced by the bi-arch when
 # the dropped node is back.
 
-export BBS_OUTGOING_MAP="source:dockernode/buildsrc win.binary:moscato2/buildbin mac.binary:petty/buildbin mac.binary.mavericks:morelia/buildbin"
+export BBS_OUTGOING_MAP="source:dockernode/buildsrc"
 
 # Needed only on the node performing stage7a (BBS-make-STATUS_DB.py) and
 # stage8 (BBS-report.py)
@@ -56,7 +60,7 @@ export BBS_OUTGOING_MAP="source:dockernode/buildsrc win.binary:moscato2/buildbin
 # IMPORTANT: BBS-report.py will treat BBS_REPORT_PATH as a _local_ path so it
 # must be run on the BBS_CENTRAL_RHOST machine.
 
-export BBS_REPORT_NODES="dockernode moscato2:bin petty:bin morelia:bin"
+export BBS_REPORT_NODES="dockernode"
 #export BBS_SVNCHANGELOG_URL="http://fgc.lsi.umich.edu/cgi-bin/blosxom.cgi"
 export BBS_REPORT_PATH="$BBS_CENTRAL_RDIR/report"
 export BBS_REPORT_CSS="$BBS_HOME/$BBS_BIOC_VERSION/report.css"
