@@ -26,8 +26,8 @@ set -e # Exit immediately if a simple command exits with a non-zero status.
 
 # Generate and publish HTML report
 
-# ipython debugging:
-#from IPython.core.debugger import Tracer;Tracer()() # <-- note the extra parens
+# ipython debugging: (note extra parens at end)
+#from IPython.core.debugger import Tracer;Tracer()()
 # regular python debugging:
 # import pdb; pdb.set_trace()
 ipython $BBS_HOME/BBS-report.py
