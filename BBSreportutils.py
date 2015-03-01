@@ -20,9 +20,34 @@ import BBScorevars
 bioc_version = BBScorevars.getenv('BBS_BIOC_VERSION', False)
 
 STATUS_DB_file = 'STATUS_DB.txt'
+PROPAGATE_STATUS_DB_file = '../PROPAGATE_STATUS_DB.txt'
 
 ### Can be 'local' or the URL where to download the data from
 data_source = 'local'
+
+
+def map_package_type_to_outgoing_node(package_type):
+    map = {}
+    rawmap = os.getenv("BBS_OUTGOING_MAP")
+    segs = rawmap.split(" ")
+    for seg in segs:
+        key = seg.split(":")[0]
+        value = seg.split(":")[1].split("/")[0]
+        map[key] = value
+    return(map[package_type])
+
+def map_outgoing_node_to_package_type(node):
+    map = {}
+    rawmap = os.getenv("BBS_OUTGOING_MAP")
+    segs = rawmap.split(" ")
+    for seg in segs:
+        pkgtype, rest = seg.split(":")
+        anode = rest.split("/")[0]
+        map[anode] = pkgtype
+    if (not node in map):
+        return None
+    return(map[node])
+
 
 ### Open read-only data stream ('local' or 'published')
 def open_rodata(file):
@@ -58,6 +83,12 @@ def get_status(dcf, pkg, node_id, stagecmd):
     key = '%s#%s#%s' % (pkg, node_id, stagecmd)
     status = bbs.parse.getNextDcfVal(dcf, key, full_line=True)
     return status
+
+def get_propagation_status_from_db(pkg, node_id):
+    rodata = open_rodata(PROPAGATE_STATUS_DB_file)
+    status = get_status(rodata['rostream'], pkg, 
+      map_outgoing_node_to_package_type(node_id), 'propagate')
+    return(status)
 
 def get_status_from_db(pkg, node_id, stagecmd):
     rodata = open_rodata(STATUS_DB_file)

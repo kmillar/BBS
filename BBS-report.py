@@ -270,6 +270,21 @@ def write_pkg_4stagelabels_as4TDs(out, extra_style=""):
         out.write('</TD>')
     return
 
+def render_propagation_status(out, pkg, node):
+    status = BBSreportutils.get_propagation_status_from_db(pkg, node.hostname)
+    if (status is None):
+        out.write("&nbsp;")
+        return()
+    if (status.startswith("YES")):
+        color = "Green"
+    elif (status.startswith("NO")):
+        color = "Red"
+    else: # "UNNEEDED"
+        color = "Blue"
+    out.write("<td><img border='0' height='10' width='10' title='%s' src='/120px-%s_Light_Icon.svg.png'/></td>" \
+        % (status, color))
+
+
 ### Produces 4 TDs
 def write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref, style=None):
     if BBSreportutils.is_supported(pkg, node):
@@ -280,6 +295,7 @@ def write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref, style=None):
             write_pkg_status_asTD(out, pkg, node, 'buildbin', leafreport_ref, style)
         else:
             out.write('<TD class="node %s"></TD>' % node.hostname)
+        render_propagation_status(out, pkg, node)
     else:
         out.write('<TD COLSPAN="4" class="node %s"><I>' % node.hostname)
         sep = '...'
@@ -1114,7 +1130,7 @@ def write_mainpage_asHTML(out, allpkgs):
     write_glyph_table(out)
     write_select_status_table(out)
     out.write('<HR>\n')
-    if len(BBSreportutils.NODES) != 1:
+    if len(BBSreportutils.NODES) != 1: # change 2 back to 1!!!! fixme dan dante
         write_mainreport_asTABLE(out, allpkgs)
     else:
         write_compactreport_asTABLE(out, BBSreportutils.NODES[0], allpkgs)
@@ -1183,6 +1199,9 @@ if bgimg_file:
 if js_file:
     print "BBS> [stage8] cp %s %s/" % (js_file, report_path)
     shutil.copy(js_file, report_path)
+for color in ["Red", "Green", "Blue"]:
+    icon = "%s/images/120px-%s_Light_Icon.svg.png" % (os.getenv("BBS_HOME"), color)
+    shutil.copy(icon, report_path)
 print "BBS> [stage8] Generating report for nodes: %s" % report_nodes
 if arg1 != "skip-leaf-reports":
     make_all_LeafReports(allpkgs)
@@ -1194,3 +1213,4 @@ else: # "cran" mode
 
 print "BBS> [stage8] DONE at %s." % time.asctime()
 
+#from IPython.core.debugger import Tracer;Tracer()()
