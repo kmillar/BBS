@@ -153,7 +153,7 @@ makeDecision <- function(pkg)
             row <- ap[dep,]
             if(!length(row))
             {
-                assign(pkg, paste("dependency", dep, "not available for type",
+                assign(pkg, paste("NO: dependency", dep, "not available for type",
                     type), envir=e)
                 return()
             }
@@ -167,7 +167,7 @@ makeDecision <- function(pkg)
             {
                 # good.
             } else {
-                assign(pkg, paste("version", vreq, "of dependency", dep,
+                assign(pkg, paste("NO: version", vreq, "of dependency", dep,
                     "is not available; found version", available.version,
                     "for type", type), envir=e)
                 return()
@@ -314,10 +314,14 @@ recur <- function(pkg)
 # outgoingDirPath is a directory that normally contains under it
 # source, win.binary, mac.binary, and mac.binary.mavericks directories.
 # biocrepo should be either "bioc" (for software packages) or
-# "data/experiment" for experiment data packages.
+# "data/experiment" for experiment data packages. internalRepos is 
+# consulted to see what needs to be propagated (i.e. nothing if package
+# there has the same version.)
 createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
-    biocrepo=c("bioc", "data/experiment"))
+    biocrepo=c("bioc", "data/experiment"), internalRepos)
 {
+    if(missing(internalRepos))
+        stop({"Must specify internalRepos!"})
     if(missing(biocrepo))
         stop("Must specify biocrepo!")
     if (biocrepo == "bioc")
@@ -423,8 +427,9 @@ createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
             if (status == "RemoveMe")
             {
                 next
-            } else if (status == TRUE) {
-                status <- "YES"
+            } else {
+                if (!grepl("^NO", status))
+                    status <- doesReposNeedPkg(pkg, type, outgoingDirPath, internalRepos)
             }
             str <- sprintf("%s#%s#propagate: %s", pkg, type, status)
             cat(str, file=out, sep="\n")
@@ -433,6 +438,40 @@ createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
     close(out)
 }
 
+getPkgVer <- function(pkg)
+{
+    pkg <- sub("\\.tar\\.gz$|\\.tgz$\\.zip$", "", pkg)
+    package_version(strsplit(pkg, "_")[[1]][2])
+}
+
+doesReposNeedPkg <- function(pkg, type, outgoingDirPath, internalRepos)
+{
+    contribdirs <- sprintf(c("src/contrib", 
+        "bin/windows/contrib/%s", "bin/macosx/contrib/%s", 
+        "bin/macosx/mavericks/contrib/%s"), rvers)
+    pkgtypes <- c("source", "win.binary", "mac.binary",
+        "mac.binary.mavericks")
+    ind <- which(pkgtypes==type)
+    fileToCopy <- dir(file.path(outgoingDirPath, type),
+        pattern=paste0("^", pkg, "_"))
+    destFile <- dir(file.path(internalRepos, contribdirs[ind]),
+        pattern=paste0("^", pkg, "_"))
+    if(!length(destFile))
+    {
+        return("YES, package does not exist in internal repository.")
+    }
+    if (fileToCopy == destFile)
+    {
+        return("UNNEEDED, same version exists in internal repository")
+    }
+    if (getPkgVer(fileToCopy) > getPkgVer(destFile))
+    {
+        return("YES, new version is higher than in internal repository")
+    } else {
+        return("NO, built version is LOWER than in internal repository!!!")
+    }
+
+}
 
 ## This function is called by the updateReposPkgs-*.sh scripts,
 ## running as biocadmin. Instead of just a straight cp --no-clobber --verbose,
@@ -449,7 +488,7 @@ copyPropagatableFiles <- function(srcDir, fileExt, propagationDb, destDir=".")
     res <- unlist(lapply(srcFiles, function(x){
         pkg <- strsplit(x, "_")[[1]][1]
         key <- sprintf("%s#%s#propagate", pkg, srcType)
-        if (key %in% colnames(db) && db[, key] == "YES")
+        if (key %in% colnames(db) &&  grepl("^YES", db[, key]))
             TRUE
         else
             FALSE

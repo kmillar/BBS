@@ -4,8 +4,17 @@
 # ...or from the OS command line with:
 # R -e "RUnit::runTestFile('test_createPropagationDB.R')"
 
-library(RUnit)
-library(devtools)
+if(!require(BiocInstaller))
+    source("http://bioconductor.org/biocLite.R")
+
+
+deps <- c("RUnit", "devtools", "BiocGenerics")
+
+for (dep in deps)
+{
+    if(!suppressPackageStartupMessages(do.call(require, list(package=dep))))
+        biocLite(dep, suppressUpdates=TRUE)
+}
 
 source("createPropagationDB.R")
 
@@ -47,7 +56,8 @@ source("createPropagationDB.R")
 {
     oldwd <- getwd()
     on.exit({
-        setwd(oldwd)
+        if(!is.null(oldwd))
+            setwd(oldwd)
     })
     setwd(dir)
     .buildsrcpkg(pkg, dir=dir)
@@ -74,7 +84,8 @@ source("createPropagationDB.R")
         dcf[,'Built'] <- sub("unix", "windows", dcf[,'Built'])
         write.dcf(dcf, file.path(pkg, "DESCRIPTION"))
         zipname <- sub(".tgz", ".zip", binpkg)
-        z<-capture.output(suppressMessages(suppressWarnings(zip(zipname, pkg))))
+        z<-capture.output(suppressMessages(suppressWarnings(zip(zipname,
+            pkg, zip="zip"))))
         unlink(pkg, recursive=TRUE)
         unlink(binpkg)
     }
@@ -84,12 +95,13 @@ test_impossibleDepDoesNotPropagate0 <- function()
 {
     outfile <- file.path(unitTestHome, "propagationdb.txt")
     dir.create(file.path(unitTestHome, "source"))
+    dir.create(file.path(unitTestHome, "src", "contrib"), recursive=TRUE)
     .create(file.path(unitTestHome, "source", "mypkg"),
         list(Imports="BiocGenerics (>= 99.99.99)"))
     .buildsrcpkg("mypkg")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
-    checkTrue(grepl("mypkg#source#propagate: version 99.99.99 of dependency BiocGenerics is not available;", lines))
+    checkTrue(grepl("mypkg#source#propagate: NO: version 99.99.99 of dependency BiocGenerics is not available;", lines))
 }
 
 test_pkgCanPropagate0 <- function()
@@ -104,9 +116,10 @@ test_pkgCanPropagate0 <- function()
             Imports="BiocGenerics (>= 0.0.0)"
           )
         )
+    dir.create(file.path(unitTestHome, "src", "contrib"), recursive=TRUE)
     .buildsrcpkg("mypkg")
     outfile <- file.path(unitTestHome, "propagationdb.txt")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
     checkTrue(grepl("mypkg#source#propagate: YES", lines))
 }
@@ -114,6 +127,7 @@ test_pkgCanPropagate0 <- function()
 test_newPkgCanSatisfyVersionDependency <- function()
 {
     dir.create(file.path(unitTestHome, "source"))
+    dir.create(file.path(unitTestHome, "src", "contrib"), recursive=TRUE)
     ## Note, we're depending on the existence of RGalaxy in bioc
     .create(file.path(unitTestHome, "source", "RGalaxy"),
         list(Imports="BiocGenerics (>= 99.0.0)"))
@@ -122,7 +136,7 @@ test_newPkgCanSatisfyVersionDependency <- function()
         list(Version="99.1.1"))
     .buildsrcpkg("BiocGenerics")
     outfile <- file.path(unitTestHome, "propagationdb.txt")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
     checkTrue(any(grepl("BiocGenerics#source#propagate: YES", lines)))
     checkTrue(any(grepl("RGalaxy#source#propagate: YES", lines)))
@@ -132,11 +146,13 @@ test_binPkg0 <- function()
 {
     macbindir <- file.path(unitTestHome, "mac.binary")
     dir.create(macbindir)
+    dir.create(file.path(unitTestHome, "bin", "macosx", "contrib",
+        BiocInstaller:::BIOC_VERSION), recursive=TRUE)
     pkgdir <- file.path(macbindir, "myMacPkg")
     .create(pkgdir)
     .buildbinpkg("myMacPkg", macbindir, "mac.binary")
     outfile <- file.path(unitTestHome, "propagationdb.txt")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
     checkTrue(grepl("myMacPkg#mac.binary#propagate: YES", lines))
 }
@@ -144,6 +160,11 @@ test_binPkg0 <- function()
 
 test_impossibleDepDoesNotPropagate_win <- function()
 {
+    dir.create(file.path(unitTestHome, "bin", "macosx", "mavericks", "contrib",
+        BiocInstaller:::BIOC_VERSION), recursive=TRUE)
+
+    dir.create(file.path(unitTestHome, "bin", "windows", "contrib",
+        BiocInstaller:::BIOC_VERSION), recursive=TRUE)
     outfile <- file.path(unitTestHome, "propagationdb.txt")
     windir <- file.path(unitTestHome, "win.binary")
     dir.create(windir)
@@ -155,7 +176,7 @@ test_impossibleDepDoesNotPropagate_win <- function()
     .create(pkgdir,
         list(Version="100.100.2"))
     .buildbinpkg("BiocGenerics", windir, "win.binary")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
     checkTrue(any(grepl("RGalaxy#win.binary#propagate: YES", lines)))
 }
@@ -168,19 +189,20 @@ test_binPkg_mavericks <- function()
     .create(pkgdir)
     .buildbinpkg("myMacPkg", macbindir, "mac.binary.mavericks")
     outfile <- file.path(unitTestHome, "propagationdb.txt")
-    result <- createPropagationList(unitTestHome, outfile, "bioc")
+    result <- createPropagationList(unitTestHome, outfile, "bioc", unitTestHome)
     lines <- readLines(outfile)
     checkTrue(grepl("myMacPkg#mac.binary.mavericks#propagate: YES", lines))
 }
 
 test_impossibleDepDoesNotPropagate_dataexp0 <- function()
 {
+    dir.create(file.path(unitTestHome, "src", "contrib"), recursive=TRUE)
     outfile <- file.path(unitTestHome, "propagationdb.txt")
     dir.create(file.path(unitTestHome, "source"))
     .create(file.path(unitTestHome, "source", "mypkg"),
         list(Imports="ALL (>= 99.99.99)"))
     .buildsrcpkg("mypkg")
-    result <- createPropagationList(unitTestHome, outfile, "data/experiment")
+    result <- createPropagationList(unitTestHome, outfile, "data/experiment", unitTestHome)
     lines <- readLines(outfile)
-    checkTrue(grepl("mypkg#source#propagate: version 99.99.99 of dependency ALL is not available;", lines))
+    checkTrue(grepl("mypkg#source#propagate: NO: version 99.99.99 of dependency ALL is not available;", lines))
 }
