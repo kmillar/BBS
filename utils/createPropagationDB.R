@@ -440,7 +440,7 @@ createPropagationList <- function(outgoingDirPath, propagationDbFilePath,
 
 getPkgVer <- function(pkg)
 {
-    pkg <- sub("\\.tar\\.gz$|\\.tgz$\\.zip$", "", pkg)
+    pkg <- sub("\\.tar\\.gz$|\\.tgz$|\\.zip$", "", pkg)
     package_version(strsplit(pkg, "_")[[1]][2])
 }
 
