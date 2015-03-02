@@ -281,8 +281,11 @@ def render_propagation_status(out, pkg, node):
         color = "Red"
     else: # "UNNEEDED"
         color = "Blue"
-    out.write("<td class='status %s' style='width: 11px;'><img border='0' height='10' width='10' title='%s' src='120px-%s_Light_Icon.svg.png'/></td>" \
-        % (node.hostname, status, color))
+    path = ""
+    if "/" in out.name:
+        path = "../"
+    out.write("<td class='status %s' style='width: 11px;'><img border='0' height='10' width='10' title='%s' src='%s120px-%s_Light_Icon.svg.png'/></td>" \
+        % (node.hostname, status, path, color))
 
 
 ### Produces 4 TDs
