@@ -281,7 +281,7 @@ def render_propagation_status(out, pkg, node):
         color = "Red"
     else: # "UNNEEDED"
         color = "Blue"
-    out.write("<td class='status %s' style='width: 11px;'><img border='0' height='10' width='10' title='%s' src='/120px-%s_Light_Icon.svg.png'/></td>" \
+    out.write("<td class='status %s' style='width: 11px;'><img border='0' height='10' width='10' title='%s' src='120px-%s_Light_Icon.svg.png'/></td>" \
         % (node.hostname, status, color))
 
 
@@ -424,7 +424,7 @@ def write_summary_asfullTRs(out, nb_pkgs, current_node=None):
             write_summary_TD(out, node, 'buildbin')
         else:
             out.write('<TD></TD>')
-        out.write("<TD style='width:11px;'><img width='10px' height='10px' src='/120px-Green_Light_Icon.svg.png'/></TD>")
+        out.write("<TD style='width:11px;'><img width='10px' height='10px' src='120px-Green_Light_Icon.svg.png'/></TD>")
         out.write('</TR>\n')
     return
 
@@ -1047,10 +1047,10 @@ def write_glyph_table(out):
     out.write('</TABLE>\n')
     out.write("""<p>Package propagation status is indicated by the following 
 symbols (mouse over the symbol for more information):</p>
- <img width='10px' height='10px' src='/120px-Green_Light_Icon.svg.png' border='0'/> YES: Package was propagated because it didn't previously exist
+ <img width='10px' height='10px' src='120px-Green_Light_Icon.svg.png' border='0'/> YES: Package was propagated because it didn't previously exist
 or version was bumped. <br/>
- <img width='10px' height='10px' src='/120px-Red_Light_Icon.svg.png' border='0'/> NO: Package was not propagated because of a problem (impossible dependencies, or version lower than what is already propagated).<br/>
- <img width='10px' height='10px' src='/120px-Blue_Light_Icon.svg.png' border='0'/> UNNEEDED: Package was not propagated because it is already in the repository with this version. A version bump is required in order to propagate it.<br/>
+ <img width='10px' height='10px' src='120px-Red_Light_Icon.svg.png' border='0'/> NO: Package was not propagated because of a problem (impossible dependencies, or version lower than what is already propagated).<br/>
+ <img width='10px' height='10px' src='120px-Blue_Light_Icon.svg.png' border='0'/> UNNEEDED: Package was not propagated because it is already in the repository with this version. A version bump is required in order to propagate it.<br/>
 <br/>""")
     return
 
