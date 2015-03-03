@@ -273,7 +273,7 @@ def write_pkg_4stagelabels_as4TDs(out, extra_style=""):
 def render_propagation_status(out, pkg, node):
     status = BBSreportutils.get_propagation_status_from_db(pkg, node.hostname)
     if (status is None):
-        out.write("&nbsp;")
+        out.write("<td class='status %s' style='width: 11px;'></td>" % node.hostname)
         return()
     if (status.startswith("YES")):
         color = "Green"
