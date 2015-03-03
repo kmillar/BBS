@@ -6,6 +6,8 @@ cd "$HOME/manage-BioC-repos/3.0"
 
 BBS_OUTGOING_DIR="/home/biocbuild/public_html/BBS/$BIOC_VERSION/data-experiment/OUTGOING"
 R_SCRIPT="source('/home/biocbuild/BBS/utils/list.old.pkgs.R')"
+PROPAGATION_R_SCRIPT="source('/home/biocbuild/BBS/utils/createPropagationDB.R')"
+PROPAGATION_DB_FILE="$BBS_OUTGOING_DIR/../PROPAGATE_STATUS_DB.txt"
 
 REPOS_ROOT="$HOME/PACKAGES/$BIOC_VERSION/data/experiment"
 SRC_CONTRIB="$REPOS_ROOT/src/contrib"
@@ -22,7 +24,8 @@ update_repo()
 	if [ "$?" != "0" ]; then
 		exit 1
 	fi
-	cp --no-clobber --verbose "$outgoing_subdir"/*.$fileext .
+#	cp --no-clobber --verbose "$outgoing_subdir"/*.$fileext .
+  echo "$PROPAGATION_R_SCRIPT; copyPropagatableFiles('$outgoing_subdir', '$fileext', '$PROPAGATION_DB_FILE', '$REPOS_ROOT') " | $R --slave
 	echo "$R_SCRIPT; oldpkgs <- list.old.pkgs(suffix='.$fileext'); removed <- file.remove(oldpkgs); names(removed) <- oldpkgs; removed" | $R --slave
 }
 
