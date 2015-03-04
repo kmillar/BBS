@@ -473,6 +473,20 @@ doesReposNeedPkg <- function(pkg, type, outgoingDirPath, internalRepos)
 
 }
 
+getFullDestDir <- function(path, destdir)
+{
+    contribpaths <- c(source="src/contrib", mac.binary=paste0("bin/macosx/contrib/", rvers),
+        mac.binary.mavericks=paste0("bin/macosx/mavericks/", rvers),
+        win.binary=paste0("bin/windows/contrib/", rvers))
+    for (nm in names(contribpaths)) 
+    {
+        if (grepl(paste0("/", nm, "/"), path, fixed=TRUE))
+        {
+            return(file.path(destdir, contribpaths[nm]))
+        }
+    }
+}
+
 ## This function is called by the updateReposPkgs-*.sh scripts,
 ## running as biocadmin. Instead of just a straight cp --no-clobber --verbose,
 ## we consult the propagation DB to determine what can be copied,
@@ -504,17 +518,18 @@ copyPropagatableFiles <- function(srcDir, fileExt, propagationDb, destDir=".")
     cat("\n")
 
 
+    destinations <- c()
     for (file in propagatable)
     {
         # simulate cp --verbose output
-        if(!file.exists(file.path(destDir, file)))
+        fullDestDir <- getFullDestDir(file, destDir)
+        if(!file.exists(file.path(fullDestDir, file)))
             cat(sprintf("‘%s‘ -> ‘%s‘\n", file.path(srcDir, file),
-                file.path(destDir, file)))
+                file.path(fullDestDir, file)))
+        result <- file.copy(file.path(srcDir, file), fullDestDir,
+            overwrite=FALSE)
     }
 
-
-    result <- file.copy(file.path(srcDir, propagatable), destDir,
-        overwrite=FALSE)
     invisible(NULL)
     # Currently ignoring the result of the copy operation.
 }
