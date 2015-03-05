@@ -482,7 +482,7 @@ doesReposNeedPkg <- function(pkg, type, outgoingDirPath, internalRepos)
 copyPropagatableFiles <- function(srcDir, fileExt, propagationDb, destDir=".")
 {
     contribpaths <- c(source="src/contrib", mac.binary=paste0("bin/macosx/contrib/", rvers),
-        mac.binary.mavericks=paste0("bin/macosx/mavericks/", rvers),
+        mac.binary.mavericks=paste0("bin/macosx/mavericks/contrib/", rvers),
         win.binary=paste0("bin/windows/contrib/", rvers))
     db <- read.dcf(propagationDb)
     segs <- strsplit(srcDir, "/")[[1]]
