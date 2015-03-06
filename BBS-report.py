@@ -102,7 +102,7 @@ def writeThinRowSeparator_asTR(out, tr_class=None):
         tr_class = ' class="%s"' % tr_class
     else:
         tr_class = '';
-    out.write('<TR%s><TD COLSPAN="7" style="height: 4pt; background: inherit;"></TD></TR>\n' % tr_class)
+    out.write('<TR%s><TD COLSPAN="8" style="height: 4pt; background: inherit;"></TD></TR>\n' % tr_class)
     return
 
 ### From internal stage command to stage HTML label
@@ -261,19 +261,20 @@ def write_pkg_status_asTD(out, pkg, node, stagecmd, leafreport_ref, style=None):
     out.write('<TD class="status %s %s"%s>%s</TD>' % (node.hostname, stagecmd, style, status_html))
     return
 
-### Produces 4 TDs of the same width
-def write_pkg_4stagelabels_as4TDs(out, extra_style=""):
+### Produces 5 TDs (4 of the same width + 1 narrow one on the right)
+def write_pkg_5stagelabels_as5TDs(out, extra_style=""):
     for stagecmd in ["install", "buildsrc", "checksrc", "buildbin"]:
         out.write('<TD class="stagecmd %s" style="text-align: center%s">' % \
                   (stagecmd, extra_style))
         out.write(stagecmd2label[stagecmd])
         out.write('</TD>')
+    out.write('<TD style="width:11px;"></TD>')
     return
 
-def render_propagation_status(out, pkg, node):
+def write_pkg_propagation_status_asTD(out, pkg, node):
     status = BBSreportutils.get_propagation_status_from_db(pkg, node.hostname)
     if (status is None):
-        out.write("<td class='status %s' style='width: 11px;'></td>" % node.hostname)
+        out.write('<TD class="status %s" style="width: 11px;"></TD>' % node.hostname)
         return()
     if (status.startswith("YES")):
         color = "Green"
@@ -284,12 +285,12 @@ def render_propagation_status(out, pkg, node):
     path = ""
     if "/" in out.name:
         path = "../"
-    out.write("<td class='status %s' style='width: 11px;'><img border='0' height='10' width='10' title='%s' src='%s120px-%s_Light_Icon.svg.png'/></td>" \
-        % (node.hostname, status, path, color))
+    out.write('<TD class="status %s" style="width: 11px;"><IMG border="0" width="10" height="10" alt="%s" title="%s" src="%s120px-%s_Light_Icon.svg.png"></TD>' \
+        % (node.hostname, status, status, path, color))
 
 
-### Produces 4 TDs
-def write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref, style=None):
+### Produces 5 TDs
+def write_pkg_5statuses_as5TDs(out, pkg, node, leafreport_ref, style=None):
     if BBSreportutils.is_supported(pkg, node):
         write_pkg_status_asTD(out, pkg, node, 'install', leafreport_ref, style)
         write_pkg_status_asTD(out, pkg, node, 'buildsrc', leafreport_ref, style)
@@ -298,21 +299,21 @@ def write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref, style=None):
             write_pkg_status_asTD(out, pkg, node, 'buildbin', leafreport_ref, style)
         else:
             out.write('<TD class="node %s"></TD>' % node.hostname)
-        render_propagation_status(out, pkg, node)
+        write_pkg_propagation_status_asTD(out, pkg, node)
     else:
-        out.write('<TD COLSPAN="4" class="node %s"><I>' % node.hostname)
+        out.write('<TD COLSPAN="5" class="node %s"><I>' % node.hostname)
         sep = '...'
         NOT_SUPPORTED_string = sep + 3 * ('NOT SUPPORTED' + sep)
         out.write(NOT_SUPPORTED_string.replace(' ', '&nbsp;'))
         out.write('</I></TD>')
     return
 
-### Produces 2 full TRs ("full TR" = TR with 7 TDs)
+### Produces 2 full TRs ("full TR" = TR with 8 TDs)
 def write_pkg_index_as2fullTRs(out, current_letter):
     ## FH: Need the abc class to blend out the alphabetical selection when
     ## "ok" packages are unselected.
     writeThinRowSeparator_asTR(out, "abc")
-    out.write('<TR class="abc"><TD COLSPAN="7" style="background: inherit; font-family: monospace;">')
+    out.write('<TR class="abc"><TD COLSPAN="8" style="background: inherit; font-family: monospace;">')
     out.write('<A name="%s"><B style="font-size: larger;">%s</B></A>' % (current_letter, current_letter))
     out.write('&nbsp;%s' % get_alphabet_dispatcher_asHTML(current_letter))
     out.write('</TD></TR>\n')
@@ -335,7 +336,7 @@ def statuses2classes(statuses):
         classes = "ok"
     return classes
 
-### Produces full TRs ("full TR" = TR with 7 TDs)
+### Produces full TRs ("full TR" = TR with 8 TDs)
 def write_pkg_allstatuses_asfullTRs(out, pkg, pkg_pos, nb_pkgs, leafreport_ref):
     if leafreport_ref == None and pkg_pos % 2 == 0:
         classes = "even"
@@ -351,7 +352,7 @@ def write_pkg_allstatuses_asfullTRs(out, pkg, pkg_pos, nb_pkgs, leafreport_ref):
         extra_style = ""
     else:
         extra_style = "; width: 96px"
-    write_pkg_4stagelabels_as4TDs(out, extra_style)
+    write_pkg_5stagelabels_as5TDs(out, extra_style)
     out.write('</TR>\n')
     nb_nodes = len(BBSreportutils.NODES)
     is_first = True
@@ -379,8 +380,8 @@ def write_pkg_allstatuses_asfullTRs(out, pkg, pkg_pos, nb_pkgs, leafreport_ref):
         #    style = None
         #else:
         #    style = "font-size: smaller"
-        #write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref, style)
-        write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref)
+        #write_pkg_5statuses_as5TDs(out, pkg, node, leafreport_ref, style)
+        write_pkg_5statuses_as5TDs(out, pkg, node, leafreport_ref)
         out.write('</TR>\n')
     return
 
@@ -399,12 +400,12 @@ def write_summary_TD(out, node, stagecmd):
     out.write('<TD>%s</TD>' % html)
     return
 
-### Produces full TRs ("full TR" = TR with 7 TDs)
+### Produces full TRs ("full TR" = TR with 8 TDs)
 def write_summary_asfullTRs(out, nb_pkgs, current_node=None):
     out.write('<TR class="summary header">')
     out.write('<TD COLSPAN="2" style="background: inherit;">SUMMARY</TD>')
     out.write('<TD style="text-align: left; width: 290px">OS&nbsp;/&nbsp;Arch</TD>')
-    write_pkg_4stagelabels_as4TDs(out)
+    write_pkg_5stagelabels_as5TDs(out)
     out.write('</TR>\n')
     nb_nodes = len(BBSreportutils.NODES)
     for node in BBSreportutils.NODES:
@@ -427,7 +428,7 @@ def write_summary_asfullTRs(out, nb_pkgs, current_node=None):
             write_summary_TD(out, node, 'buildbin')
         else:
             out.write('<TD></TD>')
-        out.write("<TD style='width:11px;'><img width='10px' height='10px' src='120px-Green_Light_Icon.svg.png'/></TD>")
+        out.write('<TD style="width:11px;"></TD>')
         out.write('</TR>\n')
     return
 
@@ -458,7 +459,7 @@ def write_mainreport_asTABLE(out, allpkgs, leafreport_ref=None):
 ### Compact report (the compact layout is used for the node-specific reports).
 ##############################################################################
 
-### Produces a full TR ("full TR" = TR with 7 TDs)
+### Produces a full TR ("full TR" = TR with 8 TDs)
 def write_compactreport_header_asfullTR(out):
     ## Using the abc class here too to blend out the alphabetical selection +
     ## this header when "ok" packages are unselected.
@@ -466,11 +467,11 @@ def write_compactreport_header_asfullTR(out):
     out.write('<TD style="width: 50px;"></TD>')
     out.write('<TD style="text-align: left; padding-left: 12px;">Package</TD>')
     out.write('<TD style="text-align: left">Maintainer</TD>')
-    write_pkg_4stagelabels_as4TDs(out)
+    write_pkg_5stagelabels_as5TDs(out)
     out.write('</TR>\n')
     return
 
-### Produces a full TR ("full TR" = TR with 7 TDs)
+### Produces a full TR ("full TR" = TR with 8 TDs)
 def write_compactreport_fullTR(out, pkg, node, pkg_pos, nb_pkgs, leafreport_ref):
     if pkg_pos % 2 == 0 and not leafreport_ref:
         classes = "even"
@@ -486,7 +487,7 @@ def write_compactreport_fullTR(out, pkg, node, pkg_pos, nb_pkgs, leafreport_ref)
     out.write('</TD>')
     maintainer = BBSreportutils.get_pkg_field_from_meat_index(pkg, 'Maintainer') 
     out.write('<TD style="text-align: left">%s</TD>' % maintainer)
-    write_pkg_4statuses_as4TDs(out, pkg, node, leafreport_ref)
+    write_pkg_5statuses_as5TDs(out, pkg, node, leafreport_ref)
     out.write('</TR>\n')
     return
 
@@ -1048,13 +1049,29 @@ def write_glyph_table(out):
     out.write('</TD>\n')
     out.write('</TR>\n')
     out.write('</TABLE>\n')
-    out.write("""<p>Package propagation status is indicated by the following 
-symbols (mouse over the symbol for more information):</p>
- <img width='10px' height='10px' src='120px-Green_Light_Icon.svg.png' border='0'/> YES: Package was propagated because it didn't previously exist
-or version was bumped. <br/>
- <img width='10px' height='10px' src='120px-Red_Light_Icon.svg.png' border='0'/> NO: Package was not propagated because of a problem (impossible dependencies, or version lower than what is already propagated).<br/>
- <img width='10px' height='10px' src='120px-Blue_Light_Icon.svg.png' border='0'/> UNNEEDED: Package was not propagated because it is already in the repository with this version. A version bump is required in order to propagate it.<br/>
-<br/>""")
+    return
+
+def write_propagation_glyph_table(out):
+    out.write('<TABLE style="border-spacing: 1px; font-size: smaller;">\n')
+    out.write('<TR>\n')
+    out.write('<TD COLSPAN="2" style="text-align: left; font-style: italic;">')
+    out.write('<B>Package propagation STATUS</B> - ')
+    out.write('Package propagation status is indicated by one of the following glyphs:')
+    out.write('</TD>\n')
+    out.write('</TR>\n')
+    out.write('<TR>\n')
+    out.write('<TD>&nbsp;-&nbsp;<IMG border="0" width="10px" height="10px" alt="YES" src="120px-Green_Light_Icon.svg.png"></TD>\n')
+    out.write('<TD>YES: Package was propagated because it didn\'t previously exist or version was bumped</TD>\n')
+    out.write('</TR>\n')
+    out.write('<TR>\n')
+    out.write('<TD>&nbsp;-&nbsp;<IMG border="0" width="10px" height="10px" alt="NO" src="120px-Red_Light_Icon.svg.png"></TD>\n')
+    out.write('<TD>NO: Package was not propagated because of a problem (impossible dependencies, or version lower than what is already propagated)</TD>\n')
+    out.write('</TR>\n')
+    out.write('<TR>\n')
+    out.write('<TD>&nbsp;-&nbsp;<IMG border="0" width="10px" height="10px" alt="UNNEEDED" src="120px-Blue_Light_Icon.svg.png"></TD>\n')
+    out.write('<TD>UNNEEDED: Package was not propagated because it is already in the repository with this version. A version bump is required in order to propagate it</TD>\n')
+    out.write('</TR>\n')
+    out.write('</TABLE>\n')
     return
 
 ### FH: Create checkboxes to select display types
@@ -1110,6 +1127,7 @@ def write_node_report(node, allpkgs):
     out.write('<BR>\n')
     write_motd_asTABLE(out)
     write_glyph_table(out)
+    write_propagation_glyph_table(out)
     write_select_status_table(out)
     out.write('<HR>\n')
     write_compactreport_asTABLE(out, node, allpkgs)
@@ -1139,6 +1157,7 @@ def write_mainpage_asHTML(out, allpkgs):
     write_node_specs_table(out)
     out.write('<BR>\n')
     write_glyph_table(out)
+    write_propagation_glyph_table(out)
     write_select_status_table(out)
     out.write('<HR>\n')
     if len(BBSreportutils.NODES) != 1: # change 2 back to 1!!!! fixme dan dante
