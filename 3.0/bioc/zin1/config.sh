@@ -23,7 +23,6 @@ export GENE_E_URL="http://taipan:9998"
 
 export R_TEXI2DVICMD=/home/biocbuild/BBS/utils/ourtexi2dvi
 
-export BROWSERVIZ_BROWSER="phantomjs $BBS_HOME/utils/headless_browser.js "
 
 
 # Shared settings (by all Unix nodes).

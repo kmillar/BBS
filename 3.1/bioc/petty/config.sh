@@ -23,7 +23,6 @@ export GENE_E_URL="http://taipan:9998"
 ## for ensemblVEP and rsbml
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/lib:/usr/local/mysql/lib
 
-export BROWSERVIZ_BROWSER="phantomjs $BBS_HOME/utils/headless_browser.js "
 
 # Shared settings (by all Unix nodes)
 
