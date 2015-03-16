@@ -609,6 +609,7 @@ def write_Command_output_to_LeafReport(out, node_hostname,
     out.write('<PRE style="font-size: smaller; padding: 2px;">\n')
     win_test_regex = re.compile("^\*\* running tests for arch '([^']*)'")
     unit_test_failure_regex = re.compile("^Running the tests in ")
+    testthat_failure_regex = re.compile("^  Error: Test failures")
     unit_test_failed = False
     failed_archs = []
     current_arch = None
@@ -616,7 +617,9 @@ def write_Command_output_to_LeafReport(out, node_hostname,
         m = win_test_regex.match(line)
         if (m):
             current_arch = m.group(1)
-        if((unit_test_failure_regex.match(line)) and (line.find("failed.") > -1)):
+        if(  ((unit_test_failure_regex.match(line)) and \
+            (line.find("failed.") > -1)) or \
+        (testthat_failure_regex.match(line))):
             unit_test_failed = True
             if current_arch is not None:
                 failed_archs.append(current_arch)
@@ -643,6 +646,9 @@ def write_Command_output_to_LeafReport(out, node_hostname,
                 if f is None:
                     file = "%s.Rcheck/tests_%s/test.Rout.fail" % (pkg, arch)
                     f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
+                if f is None:
+                    file = "%s.Rcheck/tests_%s/testthat.Rout.fail" % (pkg, arch)
+                    f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
                 if f != None:
                     out.write('<P>%s:</P>\n' % file)
                     out.write('<DIV class="%s" style="margin-left: 12px;">\n' % node_hostname)
@@ -664,6 +670,9 @@ def write_Command_output_to_LeafReport(out, node_hostname,
 
             if f is None:
                 file = "%s.Rcheck/tests/test.Rout.fail" % (pkg)
+                f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
+            if f is None:
+                file = "%s.Rcheck/tests/testthat.Rout.fail" % (pkg)
                 f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
             if f != None:
                 out.write('<P>%s:</P>\n' % file)
