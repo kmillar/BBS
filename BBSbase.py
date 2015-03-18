@@ -107,29 +107,9 @@ def _supportedWinArchs(pkg):
         archs.append("x64")
     return archs
 
-def _supportedMacArchs(pkg):
-    unsupported = _getPkgFieldFromMeatIndex(pkg, 'UnsupportedPlatforms')
-    archs = []
-    if "mac" in unsupported:
-        return archs
-    if "mac-i386" not in unsupported:
-        archs.append("i386")
-    if "mac-x86_64" not in unsupported:
-        archs.append("x86_64")
-    return archs
-
 ### 'pkgdir_path' must be a path to a package source tree.
 def _get_RCMDbuild_cmd(pkgdir_path):
     arch = ""
-    ## FIXME remove second condition after BioC 2.11 builds stop:
-    ## (NOTE from Herve: I don't understand the above comment. Starting
-    ## with BioC >= 2.12 / R >= 3.0.0, we build on Darwin 10 aka "Snow
-    ## Leopard" instead of Darwin 9 aka "Leopard" so the second condition
-    ## now always evaluates to *False*.)
-    if sys.platform == "darwin" and os.uname()[2].startswith("9."):
-        mac_archs = _supportedMacArchs(pkgdir_path)
-        if len(mac_archs) == 1:
-            arch = " --arch %s" % mac_archs[0]
     if sys.platform == "win32":
         win_archs = _supportedWinArchs(pkgdir_path)
         if len(win_archs) == 1:
@@ -228,17 +208,7 @@ def getSTAGE2cmdForNonTargetPkg(pkg):
         Rscript += "installNonTargetPkg('%s',multiArch=TRUE)" % pkg
     else:
         Rscript += "installNonTargetPkg('%s')" % pkg
-    Roptions = None
-    ## FIXME remove second condition after BioC 2.11 builds stop:
-    ## (NOTE from Herve: I don't understand the above comment. Starting
-    ## with BioC >= 2.12 / R >= 3.0.0, we build on Darwin 10 aka "Snow
-    ## Leopard" instead of Darwin 9 aka "Leopard" so the second condition
-    ## now always evaluates to *False*.)
-    if sys.platform == "darwin" and os.uname()[2].startswith("9."):
-        mac_archs = _supportedMacArchs(pkg)
-        if len(mac_archs) == 1:
-            Roptions = "--arch %s" % mac_archs[0]
-    return Rscript2syscmd(Rscript, Roptions)
+    return Rscript2syscmd(Rscript)
 
 def getSTAGE2cmd(pkg, version):
     cmd = '%s CMD INSTALL %s' % (BBSvars.r_cmd, pkg)
@@ -256,16 +226,6 @@ def getSTAGE2cmd(pkg, version):
         else:
             cmd = '%s --arch %s CMD INSTALL --no-multiarch %s' % \
                   (BBSvars.r_cmd, win_archs[0], pkg)
-    ## FIXME remove second condition after BioC 2.11 builds stop:
-    ## (NOTE from Herve: I don't understand the above comment. Starting
-    ## with BioC >= 2.12 / R >= 3.0.0, we build on Darwin 10 aka "Snow
-    ## Leopard" instead of Darwin 9 aka "Leopard" so the second condition
-    ## now always evaluates to *False*.)
-    if sys.platform == "darwin" and os.uname()[2].startswith("9."):
-        mac_archs = _supportedMacArchs(pkg)
-        if len(mac_archs) == 1:
-            cmd = '%s --arch %s CMD INSTALL %s' % \
-                  (BBSvars.r_cmd, mac_archs[0], pkg)
     return cmd
 
 def getSTAGE3cmd(pkgdir_path):
@@ -283,17 +243,7 @@ def getSTAGE4cmd(srcpkg_path):
     if sys.platform in no_example_archs:
         common_opts += " --no-examples"
     if BBSvars.STAGE4_mode != "multiarch":
-        arch = ""
-        ## FIXME remove second condition after BioC 2.11 builds stop:
-        ## (NOTE from Herve: I don't understand the above comment. Starting
-        ## with BioC >= 2.12 / R >= 3.0.0, we build on Darwin 10 aka "Snow
-        ## Leopard" instead of Darwin 9 aka "Leopard" so the second condition
-        ## now always evaluates to *False*.)
-        if sys.platform == "darwin" and os.uname()[2].startswith("9."):
-            mac_archs = _supportedMacArchs(pkg)
-            if len(mac_archs) == 1:
-                arch = " --arch %s" % mac_archs[0]
-        cmd = '%s%s CMD check %s' % (BBSvars.r_cmd, arch, common_opts)
+        cmd = '%s CMD check %s' % (BBSvars.r_cmd, common_opts)
         ## Starting with R-2.12, 'R CMD check' on Windows and Mac OS X can do
         ## runtime tests on various installed sub-archs. New options have been
         ## added to provide some control on this (see 'R CMD check -h').
@@ -329,7 +279,10 @@ def getSTAGE4cmd(srcpkg_path):
         ##     testing.
         ##   - UPDATE: May 10, 2011 - Explicitely turning off multiarch runtime
         ##     testing on Windows too.
-        if sys.platform in ["win32", "darwin"] and _BiocGreaterThanOrEqualTo(2, 7):
+        ##   - UPDATE: March 18, 2015: Packages are now only built on a single
+        ##     architecture for Mac (x86_64), so --no-multiarch has no effect.
+        ##     removing it from Mac builds.
+        if sys.platform == "win32" and _BiocGreaterThanOrEqualTo(2, 7):
             cmd += ' --no-multiarch'
         return cmd + ' ' + srcpkg_path
     if not _BiocGreaterThanOrEqualTo(2, 7):
