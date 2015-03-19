@@ -173,9 +173,10 @@ def readPkgsFromDCF(dcf, node_id=None, pkgType=None):
                     supported = False
                     break
                 # if x is win or mac and pkgType is win.binary or mac.*:
-                if pkgType and x == pkgType[0:len(x)]:
-                    supported = False
-                    break
+                if x in ["win", "mac"]:
+                    if pkgType.startswith("win") or pkgType.startswith("mac"):
+                        supported = False
+                        break
         if supported:
             pkgs.append(pkg)
     return pkgs
