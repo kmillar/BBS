@@ -174,7 +174,7 @@ def readPkgsFromDCF(dcf, node_id=None, pkgType=None):
                     break
                 # if x is win or mac and pkgType is win.binary or mac.*:
                 if x in ["win", "mac"]:
-                    if pkgType.startswith("win") or pkgType.startswith("mac"):
+                    if pkgType.startswith(x):
                         supported = False
                         break
         if supported:
