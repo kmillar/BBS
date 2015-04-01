@@ -650,7 +650,8 @@ def write_Command_output_to_LeafReport(out, node_hostname,
                     file = "%s.Rcheck/tests_%s/testthat.Rout.fail" % (pkg, arch)
                     f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
                 if f is None:
-                    dir = "%s.Rcheck/tests_%s" % (pkg, arch)
+                    fullpath = BBScorevars.nodes_rdir.subdir('%s/%s' % (node_id, stagecmd))
+                    dir = "%s/%s.Rcheck/tests_s" % (fullpath.path, pkg, arch)
                     files = os.listdir(dir)
                     cands = filter(lambda x: x.endswith(".Rout.fail"), files)
                     if (len(cands)):
@@ -683,7 +684,8 @@ def write_Command_output_to_LeafReport(out, node_hostname,
                 file = "%s.Rcheck/tests/testthat.Rout.fail" % (pkg)
                 f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
             if f is None:
-                dir = "%s.Rcheck/tests" % pkg
+                fullpath = BBScorevars.nodes_rdir.subdir('%s/%s' % (node_id, stagecmd))
+                dir = "%s/%s.Rcheck/tests" % (fullpath.path, pkg)
                 files = os.listdir(dir)
                 cands = filter(lambda x: x.endswith(".Rout.fail"), files)
                 if (len(cands)):
