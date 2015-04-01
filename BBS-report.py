@@ -649,6 +649,14 @@ def write_Command_output_to_LeafReport(out, node_hostname,
                 if f is None:
                     file = "%s.Rcheck/tests_%s/testthat.Rout.fail" % (pkg, arch)
                     f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
+                if f is None:
+                    dir = "%s.Rcheck/tests_%s" % (pkg, arch)
+                    files = os.listdir(dir)
+                    cands = filter(lambda x: x.endswith(".Rout.fail"), files)
+                    if (len(cands)):
+                        file = dir + "/" + cands[0]
+                        f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
+
                 if f != None:
                     out.write('<P>%s:</P>\n' % file)
                     out.write('<DIV class="%s" style="margin-left: 12px;">\n' % node_hostname)
@@ -674,6 +682,13 @@ def write_Command_output_to_LeafReport(out, node_hostname,
             if f is None:
                 file = "%s.Rcheck/tests/testthat.Rout.fail" % (pkg)
                 f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
+            if f is None:
+                dir = "%s.Rcheck/tests" % pkg
+                files = os.listdir(dir)
+                cands = filter(lambda x: x.endswith(".Rout.fail"), files)
+                if (len(cands)):
+                    file = dir + "/" + cands[0]
+                    f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
             if f != None:
                 out.write('<P>%s:</P>\n' % file)
                 out.write('<DIV class="%s" style="margin-left: 12px;">\n' % node_hostname)
