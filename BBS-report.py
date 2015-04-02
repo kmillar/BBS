@@ -651,7 +651,7 @@ def write_Command_output_to_LeafReport(out, node_hostname,
                     f = wopen_leafreport_input_file(None, node_id, stagecmd, file, catch_HTTPerrors=True)
                 if f is None:
                     fullpath = BBScorevars.nodes_rdir.subdir('%s/%s' % (node_id, stagecmd))
-                    dir = "%s/%s.Rcheck/tests_s" % (fullpath.path, pkg, arch)
+                    dir = "%s/%s.Rcheck/tests_%s" % (fullpath.path, pkg, arch)
                     files = os.listdir(dir)
                     cands = filter(lambda x: x.endswith(".Rout.fail"), files)
                     if (len(cands)):
