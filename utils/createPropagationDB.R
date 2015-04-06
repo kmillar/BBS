@@ -18,8 +18,8 @@ library(tools)
 ## GLOBAL VARIABLES
 
 t <- tempdir()
-rvers <- paste(BiocInstaller:::R_VERSION$major,
-    BiocInstaller:::R_VERSION$minor,
+rvers <- paste(getRversion()$major,
+    getRversion()$minor,
     sep=".")
 biocvers <- BiocInstaller::biocVersion()
 
